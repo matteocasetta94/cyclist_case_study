@@ -1,0 +1,248 @@
+---
+title: "How Does a Bike-Share Navigate Speedy Success?"
+author: "Matteo Casetta"
+date: "2023-08-20"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this case study, you will perform many real-world tasks of a junior data analyst. You will work for a fictional company, Cyclistic, and meet different characters and team members. In order to answer the key business questions, you will follow the steps of the data analysis process: **ask**, **prepare**, **process**, **analyze**, **share**, and
+**act**. Along the way, the **Case Study Roadmap** tables --- including guiding questions and key tasks --- will help you stay on the right path.
+
+### Scenario
+
+You are a junior data analyst working in the marketing analyst team at Cyclistic, a bike-share company in Chicago. The director of marketing believes the company's future success depends on maximizing the number of annual memberships. Therefore, your team wants to understand how casual riders and annual members use Cyclistic bikes differently. From these insights, your team will design a new marketing strategy to convert casual riders into annual members. But first, Cyclistic executives must approve your recommendations, so they must be backed up with compelling data insights and professional data visualizations.
+
+### Characters and teams
+
+* **Cyclistic**: A bike-share program that features more than 5.800 bicycles and 600 docking stations. Cyclistic sets itself apart by also offering reclining bikes, hand tricycles, and cargo bikes, making bike-share more inclusive to people with disabilities and riders who can't use a standard two-wheeled bike. The majority of riders opt for traditional bikes; about 8% of riders use the assistive options. Cyclistic users are more likely to ride for leisure, but about 30% use them to commute to work each day.
+* **Lily Moreno**: The director of marketing and your manager. Moreno is responsible for the development of campaigns and initiatives to promote the bike-share program. These may include email, social media, and other channels.
+* **Cyclistic marketing analytics team**: A team of data analysts who are responsible for collecting, analyzing, and reporting data that helps guide Cyclistic marketing strategy. You joined this team six months ago and have been busy learning about Cyclistic's mission and business goals --- as well as how you, as a junior data analyst, can help Cyclistic achieve them.
+* **Cyclistic executive team**: The notoriously detail-oriented executive team will decide whether to approve the recommended marketing program.
+
+### About the company
+
+In 2016, Cyclistic launched a successful bike-share offering. Since then, the program has grown to a fleet of 5.824 bicycles that are geotracked and locked into a network of 692 stations across Chicago. The bikes can be unlocked from one station and returned to any other station in the system anytime.
+
+Until now, Cyclistic's marketing strategy relied on building general awareness and appealing to broad consumer segments. One approach that helped make these things possible was the flexibility of its pricing plans: single-ride passes, full-day passes, and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual riders. Customers who purchase annual memberships are Cyclistic members.
+
+Cyclistic's finance analysts have concluded that annual members are much more profitable than casual riders. Although the pricing flexibility helps Cyclistic attract more customers, Moreno believes that maximizing the number of annual members will be key to future growth. Rather than creating a marketing campaign that targets all-new customers, Moreno believes there is a very good chance to convert casual riders into members. She notes that casual riders are already aware of the Cyclistic program and have chosen Cyclistic for their mobility needs.
+
+Moreno has set a clear goal: Design marketing strategies aimed at converting casual riders into annual members. In order to do that, however, the marketing analyst team needs to better understand how annual members and casual riders differ, why casual riders would buy a membership, and how digital media could affect their marketing tactics. Moreno and her team are interested in analyzing the Cyclistic historical bike trip data to identify trends.
+
+## Step 1: Ask
+
+Three questions will guide the future marketing program:
+
+1. How do annual members and casual riders use Cyclistic bikes differently?
+2. Why would casual riders buy Cyclistic annual memberships?
+3. How can Cyclistic use digital media to influence casual riders to become members?
+
+## Step 2: Prepare
+
+In order to analyze and identify trends I will use Cyclistic's historical trip data that can be found in the following link: *<https://divvy-tripdata.s3.amazonaws.com/index.html>*. The data has already been processed to remove trips that are taken by staff as they service and inspect the system. All the data is stored in Comma Separated Files (.csv): as the number of data to analyze is very large the tools I decided to use is R. I'll start by loading the main libraries I need for the analysis.
+
+```{r loading libraries, error=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+```
+
+Now I can load the monthly data from the .csv files into 12 data frames.
+
+```{r reading csv files and store them in data frames}
+aug_2022 <- read_csv("202208-divvy-tripdata.csv")
+sep_2022 <- read_csv("202209-divvy-tripdata.csv")
+oct_2022 <- read_csv("202210-divvy-tripdata.csv")
+nov_2022 <- read_csv("202211-divvy-tripdata.csv")
+dec_2022 <- read_csv("202212-divvy-tripdata.csv")
+jan_2023 <- read_csv("202301-divvy-tripdata.csv")
+feb_2023 <- read_csv("202302-divvy-tripdata.csv")
+mar_2023 <- read_csv("202303-divvy-tripdata.csv")
+apr_2023 <- read_csv("202304-divvy-tripdata.csv")
+may_2023 <- read_csv("202305-divvy-tripdata.csv")
+jun_2023 <- read_csv("202306-divvy-tripdata.csv")
+jul_2023 <- read_csv("202307-divvy-tripdata.csv")
+```
+
+The output shows that the column names and their data types match perfectly, so, I'm proceeding with the merge.
+
+```{r joining data frames}
+all_trips <- bind_rows(aug_2022, sep_2022, oct_2022, nov_2022, dec_2022, jan_2023, 
+                       feb_2023, mar_2023, apr_2023, may_2023, jun_2023, jul_2023)
+
+dim(all_trips)
+```
+
+The output shows we have a data set that contains a total of 13 columns and 5.723.606 rows.
+
+## Step 3: Process
+
+At the moment the data can only be aggregated at the ride-level, which is too granular. I want to add some additional columns of data, such as day, month and hour, that provide additional opportunities to aggregate the data. After that I will add a calculated field for the rides' length.
+
+I'll start with adding columns that list the date, month, day, and hour of each ride.
+
+```{r adding date, month, day and year to the df}
+all_trips$date <- as.Date(all_trips$started_at)
+all_trips$month <- format(all_trips$date, "%b")
+all_trips$day_of_week <- format(all_trips$date, "%a")
+all_trips$hour <- format(all_trips$started_at, format = "%H")
+```
+
+Then I'm adding a ride length calculation to all_trips (in minutes).
+
+```{r adding ride_length in mins}
+all_trips$ride_length <- difftime(all_trips$ended_at, all_trips$started_at, 
+                                  units = "mins")
+```
+
+Inspecting the data frame.
+
+```{r inspection, echo=FALSE}
+options(width = 80)
+glimpse(all_trips)
+```
+
+The output shows "ride_length" column is formatted as duration type: I need to convert it to numeric so I can run calculations on the data.
+
+```{r convert datediff to numeric}
+all_trips$ride_length <- as.numeric(as.character(all_trips$ride_length))
+```
+
+Now let's see a summary of the data frame.
+
+```{r inspection 2, echo=FALSE}
+options(width = 80)
+summary(all_trips)
+```
+
+The summary of the data frame shows that I have negative values for the ride length column: giving the fact that any trips that is below 60 seconds in length is potentially a false starts or users trying to re-dock a bike to ensure it was secure, I will remove all the rows containing ride length values less than 1 minute and save the result in a new data frame.
+
+```{r removing ride with length values < 1}
+all_trips_v2 <- all_trips[!(all_trips$ride_length < 1), ]
+```
+
+## Step 4: Analyze
+
+For the analysis step I'm going to perform the following calculations:
+
+* User type percentage over total rides.
+
+```{r rider percentages}
+users_percentage <- all_trips_v2 %>%
+  group_by(member_casual) %>%
+  summarize(percentage = n() / nrow(.))
+
+head(users_percentage)
+```
+
+* Average duration and number of rides by user type and day of week.
+
+```{r number and mean duration by day, error=FALSE, message=FALSE, warning=FALSE}
+all_trips_v2$day_of_week <- ordered(all_trips_v2$day_of_week, levels = c("Mon", "Tue", 
+                                    "Wed", "Thu", "Fri", "Sat", "Sun"))
+
+ride_n_length_by_day_and_user <- all_trips_v2 %>%
+  group_by(member_casual, day_of_week) %>%
+  summarize(
+    number_of_rides = n(),
+    average_duration = mean(ride_length)
+  )
+
+head(ride_n_length_by_day_and_user)
+```
+
+* Average duration and number of rides by user type and month.
+
+```{r number and mean duration by month, error=FALSE, message=FALSE, warning=FALSE}
+all_trips_v2$month <- ordered(all_trips_v2$month, levels = c("Jan", "Feb", "Mar", "Apr",
+                              "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+ride_n_length_by_month_and_user <- all_trips_v2 %>%
+  group_by(member_casual, month) %>%
+  summarize(
+    number_of_rides = n(),
+    average_duration = mean(ride_length)
+  )
+
+head(ride_n_length_by_month_and_user)
+```
+
+* Average duration and number of rides by user type and hour.
+
+```{r number of rides by hour, error=FALSE, message=FALSE, warning=FALSE}
+ride_n_by_hour <- all_trips_v2 %>%
+  group_by(member_casual, hour) %>%
+  summarize(
+    number_of_rides = n(),
+    average_duration = mean(ride_length)
+  )
+
+head(ride_n_by_hour)
+```
+
+## Step 5: Share
+
+Now it's time to draw the conclusion after the Analysis process. As shown in the pie chart here below casual riders represent the 37.95% of the total users: this means that members are the main source of income, but there's a good chance to convert some of the casual riders into members.
+
+```{r plot user percentage, echo=FALSE, fig.align='center', out.width="75%"}
+ggplot(users_percentage, aes(x = "", y = percentage, fill = member_casual)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y") +
+  theme_void() +
+  geom_text(aes(label = paste(round(100 * percentage, 2), "%", sep = "")),
+    position = position_stack(vjust = 0.5)
+  ) +
+  labs(title = "Percentage of members and casual riders", x = "", y = "", fill = NULL) + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The above observation is reinforced by plotting the average rides duration per day and rider type: casual riders' average ride duration, in fact, exceeds member rides' length every day of the week. Also, we can see a slightly increase during the weekend for casual members.
+
+```{r plot duration by day and user, echo=FALSE, fig.align='center', out.width="75%"}
+ggplot(ride_n_length_by_day_and_user, aes(x = day_of_week, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Average rides duration (in minutes) per day and rider type", x = "", y = "", fill = NULL) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Looking at the number of rides per day we can see how the two members data are slightly inversely proportional: casual members tends to take more rides through the week-end, while member prefer to use the service during working days, meaning that many member probably use Cyclistic service mainly to commute to work.
+
+```{r plot number of rides by day and user, echo=FALSE, fig.align='center', out.width="75%"}
+ggplot(ride_n_length_by_day_and_user, aes(x = day_of_week, y = number_of_rides / 1000, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Number of rides (in thousands) per day and rider type", x = "", y = "", fill = NULL) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+If we look at the number of rides per month and rider type there's a clear usage increase by both type of riders during spring and summer seasons. So there is a clear seasonability in the service usage.
+
+```{r plot number of rides by month and user, echo=FALSE, fig.align='center', out.width="75%"}
+ggplot(ride_n_length_by_month_and_user, aes(x = month, y = number_of_rides / 1000, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Number of rides (in thousands) per month and rider type", x = "", y = "", fill = NULL) + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Finally, if we plot the number of rides per hour and rider type we can see how the two type of users have similar habitudes: number of rides start to increase at 5 AM, reaching the first peak at 8 AM, then we have a second peak at 5 PM. This is more evident for member users, confirming that their main bike usage is to commute to work.
+
+```{r plot number of rides by hour and user, echo=FALSE, fig.align='center', out.width="75%"}
+ggplot(ride_n_by_hour, aes(x = hour, y = number_of_rides / 1000, group = member_casual, color = member_casual)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Number of rides (in thousands) per hour and rider type", x = "", y = "", color = NULL) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Step 6: Act
+
+My personal recommendations for the marketing campaign are:
+
+* As we have seen a seasonability in the analyzed data we should launch casual riders email campaign in early spring and run through summer season and schedule different offerings and promotions throughout the campaign (for example discounts for becoming member before busy seasons).
+* Create new Cyclistic member packages for entertainment and week-end activities.
+* Raise awareness about benefits of using Cyclistic service for morning and evening commutes.
